@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two axes of database readiness for AI agents — names &amp; values</title>
+<meta name="description" content="We measured how an AI agent's accuracy, cost, time, and query count depend on two independent properties of a table: whether its column names carry meaning, and whether its values follow undocumented conventions.">
+<style>
+  :root{--ink:#1a1d29;--muted:#5b6172;--line:#e7e9f0;--bg:#fafbfd;--accent:#3a5bd9;--good:#138a36;--bad:#c0392b;--soft:#f3f5fb;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:780px;margin:0 auto;padding:3.2rem 1.25rem 4rem}
+  header .kicker{color:var(--accent);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.72rem}
+  h1{font-size:2.05rem;line-height:1.18;margin:.5rem 0 .4rem;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:1.08rem;margin:0 0 1rem}
+  .byline{color:var(--muted);font-size:.86rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:.7rem 0;margin:1.4rem 0 2rem}
+  h2{font-size:1.32rem;margin:2.6rem 0 .6rem;letter-spacing:-.01em}
+  h3{font-size:1.02rem;margin:1.6rem 0 .4rem}
+  p{margin:.7rem 0}
+  code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:.9em;font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  .lede{font-size:1.1rem}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:1rem 0}
+  .metric{background:#fff;border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem}
+  .metric b{display:block;font-size:.95rem}
+  .metric span{color:var(--muted);font-size:.86rem}
+  table{width:100%;border-collapse:collapse;margin:1rem 0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:.92rem}
+  th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--soft);font-weight:600;font-size:.8rem;color:var(--muted)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  .base td{background:#f4fbf6}
+  .ref td{color:var(--muted)}
+  .good{color:var(--good);font-weight:600}.bad{color:var(--bad);font-weight:600}.na{color:#aab}
+  td.alt{background:#fff5e6;color:#b3690a;font-weight:700}
+  tr.grp td{border-top:2px solid #d3d8e6}
+  .tgap,td.tgap{color:var(--bad);font-weight:700}
+  .cap{color:var(--muted);font-size:.82rem;margin:.2rem 0 0}
+  .callout{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:1rem 1.1rem;margin:1.4rem 0}
+  .callout .big{font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+  .note{background:var(--soft);border-radius:8px;padding:.8rem 1rem;color:var(--muted);font-size:.86rem;margin:2rem 0 0}
+  footer{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--line);color:var(--muted);font-size:.86rem}
+  footer a{color:var(--accent);text-decoration:none}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}h1{font-size:1.7rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="kicker">Database readiness · measurement</div>
+  <h1>What a low-signal table costs an AI agent</h1>
+  <p class="sub">Two independent properties of a table change an agent's cost, latency, and correctness — and each has a different fix.</p>
+  <div class="byline">A benchmark study from <strong>Natural&#8209;Joints</strong> · we drove a Claude&nbsp;Code agent through a fixed question set and logged every query it issued.</div>
+</header>
+
+<p class="lede">When you point an AI agent at a database, it first has to figure out what your tables and columns <em>mean</em>, and which rules the data quietly follows. We varied <strong>two independent things</strong> about the schema and measured the effect on each question:</p>
+<ol>
+  <li><strong>Column names</strong> — do the identifiers carry meaning, or are they opaque (<code>c0</code>, <code>MATNR</code>, <code>FIELD_017</code>)?</li>
+  <li><strong>Column values</strong> — do the values follow a convention stated nowhere (mixed units, a join that double-counts, an amount in cents)?</li>
+</ol>
+
+<h2>The four metrics</h2>
+<div class="grid">
+  <div class="metric"><b>Accuracy</b><span>Answer matches a known gold result. The only correctness metric; the other three measure effort.</span></div>
+  <div class="metric"><b>Queries / q</b><span>SQL statements the agent issues per question — its exploration effort. A legible schema needs fewer.</span></div>
+  <div class="metric"><b>Time / q</b><span>Wall-clock seconds per question; the round-trips before it can answer.</span></div>
+  <div class="metric"><b>Price / q</b><span>Model API dollars per question — driven by tokens: the schema it reads + the queries it runs.</span></div>
+</div>
+
+<h2>Aspect 1 — Column names (legibility)</h2>
+<h3>How we strip the naming signal</h3>
+<p>We take a normal, valid database and degrade only the <em>names</em> — data left byte-for-byte identical — in two ways:</p>
+<ul>
+  <li><strong>Obfuscated</strong> — every identifier becomes an opaque code (tables <code>t_a1b2</code>, columns <code>c0, c1, c2…</code>). The names carry <em>no</em> signal.</li>
+  <li><strong>Low-signal</strong> — every identifier becomes a real but generic word (tables <code>entity</code>/<code>record</code>, columns <code>id</code>/<code>value</code>/<code>status</code>/<code>amount</code>). The names look meaningful but carry <em>false</em> signal.</li>
+</ul>
+<p>Values like <code>"Carniolan"</code> are untouched in both — the agent must reverse-engineer each column by sampling rows. This isolates exactly what naming signal is worth.</p>
+
+<p><strong>Table 1 — every schema state, by model.</strong> Same five questions, same underlying data. The green baseline row is normal data with legible names; rows are grouped by model. Blank states were not measured for that model.</p>
+<table>
+  <thead><tr><th>Model</th><th>Schema state</th><th class="num">Accuracy</th><th class="num">Queries/q</th><th class="num">Time/q</th><th class="num">Price/q</th></tr></thead>
+  <tbody>
+    <tr class="base"><td>Sonnet 4.6</td><td><strong>Legible</strong> — baseline</td><td class="num">100%</td><td class="num">2.6</td><td class="num">16s</td><td class="num">$0.068</td></tr>
+    <tr><td></td><td>Low-signal names (generic)</td><td class="num bad">80%</td><td class="num">14.0</td><td class="num tgap">70s</td><td class="num">$0.168</td></tr>
+    <tr><td></td><td>Obfuscated (opaque codes)</td><td class="num bad">80%</td><td class="num">12.0</td><td class="num tgap">57s</td><td class="num">$0.139</td></tr>
+    <tr><td></td><td>Obfuscated + full map</td><td class="num good">100%</td><td class="num">5.6</td><td class="num">32s</td><td class="num">$0.115</td></tr>
+    <tr><td></td><td>Obfuscated + brief</td><td class="num good">100%</td><td class="num">5.0</td><td class="num">30s</td><td class="num">$0.101</td></tr>
+    <tr class="grp"><td>Opus 4.8</td><td>Obfuscated (opaque codes)</td><td class="num">100%</td><td class="num">7.0</td><td class="num">56s</td><td class="num alt">$0.269</td></tr>
+    <tr><td></td><td>Obfuscated + brief</td><td class="num">100%</td><td class="num">4.6</td><td class="num">44s</td><td class="num">$0.225</td></tr>
+    <tr class="grp"><td>Haiku 4.5</td><td>Obfuscated + brief</td><td class="num good">100%</td><td class="num">8.2</td><td class="num">26s</td><td class="num good">$0.050</td></tr>
+  </tbody>
+</table>
+<p class="cap"><strong>Low-signal names are worse than full obfuscation.</strong> Generic-but-plausible names (<code>entity</code>, <code>value</code>, <code>status</code>) scored the same 80% accuracy as opaque codes but cost <em>more</em> — 14 vs 12 queries, <span class="tgap">70s vs 57s</span>, $0.168 vs $0.139 — because false signal lures the model into confident wrong assumptions, while opaque codes simply say "you have nothing, sample everything." <strong>The time gap is the sharpest signal:</strong> a low-signal schema took <span class="tgap">~4.4× longer per question</span> than the legible baseline (16s → 70s). A semantic layer over the same data restored accuracy and pulled time back to ~30s. Across models, the <span style="background:#fff5e6;color:#b3690a;font-weight:700;padding:0 4px;border-radius:3px">highlighted</span> Opus-on-raw price ($0.269) is the costly alternative — the same 100% accuracy is reached for <strong>$0.050</strong> by enriching and dropping to the cheapest model.</p>
+
+<div class="callout">
+  <div>To reach 100% on the opaque schema, you can spend on the <em>model</em> or on the <em>schema</em>:</div>
+  <p style="margin:.5rem 0 0">Frontier model (Opus) on raw opaque data: <strong>$0.269 / question</strong>.<br>
+  Cheapest model (Haiku) + a brief: <strong>$0.050 / question</strong> — same accuracy.</p>
+  <div class="big" style="color:var(--accent);margin-top:.4rem">≈ 5× lower price, identical correctness</div>
+  <p class="cap" style="margin-top:.3rem">A legible, documented schema lets a small model do what otherwise needed a frontier one — enrichment substitutes for model capability.</p>
+</div>
+
+<h2>Brief vs. the full map</h2>
+<p>A semantic layer can be handed to the agent two ways, and they are not equivalent:</p>
+<ul>
+  <li><strong>The full map (a single <code>.md</code> file)</strong> — the complete curated reference: every table's grain, keys, column meanings, and detected hazards in one document. Complete, but the fact that matters for a given question is buried among everything else.</li>
+  <li><strong>The brief (question-scoped)</strong> — one fast model call reframes the question against the schema: it ranks the relevant tables, expands those, and attaches only the keys and hazards that bear on <em>this</em> answer, while still listing every table so nothing is silently excluded. It costs about one extra cent and a few seconds.</li>
+</ul>
+<p><strong>The data</strong> (Opus&nbsp;4.8, on a value-reconciliation question — <em>“total treatment spend, in dollars,”</em> where one column is stored in cents and reconciles to a dollar column in another table):</p>
+<table>
+  <thead><tr><th>Layer form</th><th class="num">Accuracy</th><th class="num">Queries/q</th><th class="num">Price/q</th></tr></thead>
+  <tbody>
+    <tr><td>Full map (<code>.md</code> dump)</td><td class="num bad">2/3 (67%)</td><td class="num">4.7</td><td class="num">$0.201</td></tr>
+    <tr><td>Brief (scoped)</td><td class="num good">3/3 (100%)</td><td class="num">4.3</td><td class="num">$0.176</td></tr>
+  </tbody>
+</table>
+<p class="cap">Here the brief is not just cheaper — it is <em>more accurate</em>. With the full map, Opus saw the cents convention <em>and</em> two distracting neighbours (a <code>dose</code> column, a separate rate table) and over-reasoned: <strong>Σ&nbsp;dose × cost ÷ 100 = $239.50</strong> — wrong. The scoped brief surfaced only the cost↔price reconciliation, so it summed correctly: <strong>$54.50</strong>. Same model, same data — the only difference is which context the layer put in front of it.</p>
+<p>That is the core lesson, and it cuts both ways: <em>more</em> context is not <em>better</em> context. The full map's value grows with how much you can't fit in a prompt; the brief's value grows with how easily the one decisive fact gets buried.</p>
+
+<h2>Aspect 2 — Column values (conventions)</h2>
+<p>Now the names are fine, but the <em>values</em> follow a rule that appears in no name — yet is recoverable from the data itself. We planted three and asked questions that hinge on each (wrong-answer counts over three model tiers — Haiku, Sonnet, Opus):</p>
+<table>
+  <thead><tr><th>Deviation</th><th>Recoverable from…</th><th class="num">Raw schema</th><th class="num">+ semantic layer</th></tr></thead>
+  <tbody>
+    <tr><td>Mixed units (kg &amp; g)</td><td>a sibling <code>unit</code> column</td><td class="num">0/3 wrong</td><td class="num">0/3 wrong</td></tr>
+    <tr><td>Fan-out join (1:many)</td><td>join cardinality</td><td class="num bad">1/3 wrong</td><td class="num good">0/3 wrong</td></tr>
+    <tr><td>Amount stored in cents</td><td>cross-table reconciliation</td><td class="num bad">3/3 wrong</td><td class="num good">0/3 wrong</td></tr>
+    <tr><td><strong>Overall</strong></td><td></td><td class="num bad"><strong>5/9 correct</strong></td><td class="num good"><strong>9/9 correct</strong></td></tr>
+  </tbody>
+</table>
+<p class="cap">The cents case is the sharp one: an integer column actually in cents, reconcilable against a dollar column in another table. <strong>Every model got it wrong 3/3 on the raw schema</strong> — summing it as dollars (a 100× error). None reconciled the two tables unprompted; the enricher had, so with the layer all three answered correctly.</p>
+
+<h3>Same accuracy — what it costs in time &amp; budget</h3>
+<p>On these value questions the <strong>raw schema caps at 5/9 correct for every model</strong> — none reaches 100% unaided. Once you require correct answers you must enrich; the only remaining choice is which model. To reach <strong>3/3 (100%)</strong>:</p>
+<table>
+  <thead><tr><th>Model + semantic layer</th><th class="num">Accuracy</th><th class="num">Time/q</th><th class="num">Price/q</th></tr></thead>
+  <tbody>
+    <tr><td>Haiku 4.5</td><td class="num good">100%</td><td class="num">17s</td><td class="num good">$0.037</td></tr>
+    <tr><td>Sonnet 4.6</td><td class="num good">100%</td><td class="num">19s</td><td class="num">$0.088</td></tr>
+    <tr><td>Opus 4.8</td><td class="num good">100%</td><td class="num">28s</td><td class="num alt">$0.176</td></tr>
+  </tbody>
+</table>
+<p class="cap">Same correctness, very different price: the cheapest model reaches it for <strong>$0.037/q in 17s</strong> — about <strong>5× cheaper and ~40% faster</strong> than the frontier model. Because correctness here <em>requires</em> the layer regardless of model, the gain is choosing the smallest model the layer can carry.</p>
+
+<p>This is the difference between the two aspects: opaque <em>names</em> cost mostly <em>budget</em> (the agent grinds, but usually arrives); undocumented <em>conventions</em> cost <em>correctness</em> — a confident, wrong number from data that looks perfect.</p>
+
+<h2>Bottom line</h2>
+<p class="lede">Enrich a low-signal schema and the <strong>cheapest model matches a frontier model's accuracy at ~80% lower price and ~50% less time per question</strong> ($0.050 vs $0.269) — database readiness is a property of your <em>data</em>, not the model you pick.</p>
+
+<div class="note"><strong>Method.</strong> Small synthetic benchmark — a deliberately obscure 11–12 table schema, gold answers computed from the source data, a single trial per cell. Numbers are directional, not a leaderboard; effect sizes were consistent across model tiers. Some per-model cells (marked —) were not run. Built with our db-readiness harness, which drives a real agent and classifies every query it issues.</div>
+
+<footer>
+  <p><strong>Natural&#8209;Joints</strong> — measuring, and raising, how ready your data is for AI agents. ·
+  <a href="https://natural-joints.com">natural-joints.com</a> ·
+  <a href="mailto:ran@natural-joints.com">ran@natural-joints.com</a></p>
+</footer>
+</div>
+
+<!-- analytics -->
+<script data-goatcounter="https://natural-joints.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
