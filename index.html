@@ -54,7 +54,7 @@
 
 <p class="lede">When you point an AI agent at a database, it first has to figure out what your tables and columns <em>mean</em>, and which rules the data quietly follows. We varied <strong>two independent things</strong> about the schema and measured the effect on each question:</p>
 <ol>
-  <li><strong>Column names</strong> — do the identifiers carry meaning, or are they opaque (<code>c0</code>, <code>MATNR</code>, <code>FIELD_017</code>)?</li>
+  <li><strong>Column names</strong> — do the identifiers carry meaning, or are they low-signal (<code>c0</code>, <code>MATNR</code>, <code>FIELD_017</code>)?</li>
   <li><strong>Column values</strong> — do the values follow a convention stated nowhere (mixed units, a join that double-counts, an amount in cents)?</li>
 </ol>
 
@@ -70,8 +70,8 @@
 <h3>How we strip the naming signal</h3>
 <p>We take a normal, valid database and degrade only the <em>names</em> — data left byte-for-byte identical — in two ways:</p>
 <ul>
-  <li><strong>Obfuscated</strong> — every identifier becomes an opaque code (tables <code>t_a1b2</code>, columns <code>c0, c1, c2…</code>). The names carry <em>no</em> signal.</li>
-  <li><strong>Low-signal</strong> — every identifier becomes a real but generic word (tables <code>entity</code>/<code>record</code>, columns <code>id</code>/<code>value</code>/<code>status</code>/<code>amount</code>). The names look meaningful but carry <em>false</em> signal.</li>
+  <li><strong>Opaque codes</strong> — every identifier becomes a meaningless code (tables <code>t_a1b2</code>, columns <code>c0, c1, c2…</code>). The names carry <em>no</em> signal.</li>
+  <li><strong>Generic names</strong> — every identifier becomes a real but generic word (tables <code>entity</code>/<code>record</code>, columns <code>id</code>/<code>value</code>/<code>status</code>/<code>amount</code>). The names look meaningful but carry <em>false</em> signal.</li>
 </ul>
 <p>Values like <code>"Carniolan"</code> are untouched in both — the agent must reverse-engineer each column by sampling rows. This isolates exactly what naming signal is worth.</p>
 
@@ -80,20 +80,20 @@
   <thead><tr><th>Model</th><th>Schema state</th><th class="num">Accuracy</th><th class="num">Queries/q</th><th class="num">Time/q</th><th class="num">Price/q</th></tr></thead>
   <tbody>
     <tr class="base"><td>Sonnet 4.6</td><td><strong>Legible</strong> — baseline</td><td class="num">100%</td><td class="num">2.6</td><td class="num">16s</td><td class="num">$0.068</td></tr>
-    <tr><td></td><td>Low-signal names (generic)</td><td class="num bad">80%</td><td class="num">14.0</td><td class="num tgap">70s</td><td class="num">$0.168</td></tr>
-    <tr><td></td><td>Obfuscated (opaque codes)</td><td class="num bad">80%</td><td class="num">12.0</td><td class="num tgap">57s</td><td class="num">$0.139</td></tr>
-    <tr><td></td><td>Obfuscated + full map</td><td class="num good">100%</td><td class="num">5.6</td><td class="num">32s</td><td class="num">$0.115</td></tr>
-    <tr><td></td><td>Obfuscated + brief</td><td class="num good">100%</td><td class="num">5.0</td><td class="num">30s</td><td class="num">$0.101</td></tr>
-    <tr class="grp"><td>Opus 4.8</td><td>Obfuscated (opaque codes)</td><td class="num">100%</td><td class="num">7.0</td><td class="num">56s</td><td class="num alt">$0.269</td></tr>
-    <tr><td></td><td>Obfuscated + brief</td><td class="num">100%</td><td class="num">4.6</td><td class="num">44s</td><td class="num">$0.225</td></tr>
-    <tr class="grp"><td>Haiku 4.5</td><td>Obfuscated + brief</td><td class="num good">100%</td><td class="num">8.2</td><td class="num">26s</td><td class="num good">$0.050</td></tr>
+    <tr><td></td><td>Low-signal (generic names)</td><td class="num bad">80%</td><td class="num">14.0</td><td class="num tgap">70s</td><td class="num">$0.168</td></tr>
+    <tr><td></td><td>Low-signal (opaque codes)</td><td class="num bad">80%</td><td class="num">12.0</td><td class="num tgap">57s</td><td class="num">$0.139</td></tr>
+    <tr><td></td><td>Low-signal + full map</td><td class="num good">100%</td><td class="num">5.6</td><td class="num">32s</td><td class="num">$0.115</td></tr>
+    <tr><td></td><td>Low-signal + brief</td><td class="num good">100%</td><td class="num">5.0</td><td class="num">30s</td><td class="num">$0.101</td></tr>
+    <tr class="grp"><td>Opus 4.8</td><td>Low-signal (opaque codes)</td><td class="num">100%</td><td class="num">7.0</td><td class="num">56s</td><td class="num alt">$0.269</td></tr>
+    <tr><td></td><td>Low-signal + brief</td><td class="num">100%</td><td class="num">4.6</td><td class="num">44s</td><td class="num">$0.225</td></tr>
+    <tr class="grp"><td>Haiku 4.5</td><td>Low-signal + brief</td><td class="num good">100%</td><td class="num">8.2</td><td class="num good">26s</td><td class="num good">$0.050</td></tr>
   </tbody>
 </table>
-<p class="cap"><strong>Low-signal names are worse than full obfuscation.</strong> Generic-but-plausible names (<code>entity</code>, <code>value</code>, <code>status</code>) scored the same 80% accuracy as opaque codes but cost <em>more</em> — 14 vs 12 queries, <span class="tgap">70s vs 57s</span>, $0.168 vs $0.139 — because false signal lures the model into confident wrong assumptions, while opaque codes simply say "you have nothing, sample everything." <strong>The time gap is the sharpest signal:</strong> a low-signal schema took <span class="tgap">~4.4× longer per question</span> than the legible baseline (16s → 70s). A semantic layer over the same data restored accuracy and pulled time back to ~30s. Across models, the <span style="background:#fff5e6;color:#b3690a;font-weight:700;padding:0 4px;border-radius:3px">highlighted</span> Opus-on-raw price ($0.269) is the costly alternative — the same 100% accuracy is reached for <strong>$0.050</strong> by enriching and dropping to the cheapest model.</p>
+<p class="cap"><strong>Generic names are worse than opaque codes.</strong> Generic-but-plausible names (<code>entity</code>, <code>value</code>, <code>status</code>) scored the same 80% accuracy as opaque codes but cost <em>more</em> — 14 vs 12 queries, <span class="tgap">70s vs 57s</span>, $0.168 vs $0.139 — because false signal lures the model into confident wrong assumptions, while opaque codes simply say "you have nothing, sample everything." <strong>The time gap is the sharpest signal:</strong> a low-signal schema took <span class="tgap">~4.4× longer per question</span> than the legible baseline (16s → 70s). A semantic layer over the same data restored accuracy and pulled time back to ~30s. Across models, the <span style="background:#fff5e6;color:#b3690a;font-weight:700;padding:0 4px;border-radius:3px">highlighted</span> Opus-on-raw price ($0.269) is the costly alternative — the same 100% accuracy is reached for <strong>$0.050</strong> by enriching and dropping to the cheapest model.</p>
 
 <div class="callout">
-  <div>To reach 100% on the opaque schema, you can spend on the <em>model</em> or on the <em>schema</em>:</div>
-  <p style="margin:.5rem 0 0">Frontier model (Opus) on raw opaque data: <strong>$0.269 / question</strong>.<br>
+  <div>To reach 100% on a low-signal schema, you can spend on the <em>model</em> or on the <em>schema</em>:</div>
+  <p style="margin:.5rem 0 0">Frontier model (Opus) on the raw low-signal schema: <strong>$0.269 / question</strong>.<br>
   Cheapest model (Haiku) + a brief: <strong>$0.050 / question</strong> — same accuracy.</p>
   <div class="big" style="color:var(--accent);margin-top:.4rem">≈ 5× lower price, identical correctness</div>
   <p class="cap" style="margin-top:.3rem">A legible, documented schema lets a small model do what otherwise needed a frontier one — enrichment substitutes for model capability.</p>
@@ -141,7 +141,7 @@
 </table>
 <p class="cap">Same correctness, very different price: the cheapest model reaches it for <strong>$0.037/q in 17s</strong> — about <strong>5× cheaper and ~40% faster</strong> than the frontier model. Because correctness here <em>requires</em> the layer regardless of model, the gain is choosing the smallest model the layer can carry.</p>
 
-<p>This is the difference between the two aspects: opaque <em>names</em> cost mostly <em>budget</em> (the agent grinds, but usually arrives); undocumented <em>conventions</em> cost <em>correctness</em> — a confident, wrong number from data that looks perfect.</p>
+<p>This is the difference between the two aspects: low-signal <em>names</em> cost mostly <em>budget</em> (the agent grinds, but usually arrives); undocumented <em>conventions</em> cost <em>correctness</em> — a confident, wrong number from data that looks perfect.</p>
 
 <h2>Bottom line</h2>
 <p class="lede">Enrich a low-signal schema and the <strong>cheapest model matches a frontier model's accuracy at ~80% lower price and ~50% less time per question</strong> ($0.050 vs $0.269) — database readiness is a property of your <em>data</em>, not the model you pick.</p>
