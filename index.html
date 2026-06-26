@@ -52,11 +52,13 @@
   <div class="byline">A benchmark study from <strong>Natural&#8209;Joints</strong> · we drove a Claude&nbsp;Code agent through a fixed question set and logged every query it issued.</div>
 </header>
 
-<p class="lede">When you point an AI agent at a database, it first has to figure out what your tables and columns <em>mean</em>, and which rules the data quietly follows. We varied <strong>two independent things</strong> about the schema and measured the effect on each question:</p>
+<p class="lede">When you point an AI agent at a database, it first has to figure out what your tables and columns <em>mean</em>, which rules the data quietly follows, and how your question maps onto all of it. We varied <strong>three things</strong> — two about the schema, one about the question — and measured the effect on each answer:</p>
 <ol>
   <li><strong>Column names</strong> — do the identifiers carry meaning, or are they low-signal (<code>c0</code>, <code>MATNR</code>, <code>FIELD_017</code>)?</li>
   <li><strong>Column values</strong> — do the values follow a convention stated nowhere (mixed units, a join that double-counts, an amount in cents)?</li>
+  <li><strong>Question language</strong> — is the question asked in the table's own vocabulary, or in plain business terms the agent must first translate onto the schema (<em>“reimbursed per billed event,”</em> not <code>AVG(paid_amt)</code>; <em>“who tends the most hives,”</em> not <code>COUNT(*) GROUP BY keeper</code>)? The further the wording sits from the column names, the more the agent has to <em>guess</em> which table and field you meant — and a wrong guess is a confident wrong answer.</li>
 </ol>
+<p>The first two are properties of your <em>data</em>; the third is a property of the <em>question</em>. Aspects&nbsp;1 and&nbsp;2 are isolated below on a small schema; Aspect&nbsp;3 — the gap between business language and table vocabulary — is where they compound, so we test it at scale (25&nbsp;tables) in the last section.</p>
 
 <h2>The four metrics</h2>
 <div class="grid">
@@ -143,8 +145,8 @@
 
 <p>This is the difference between the two aspects: low-signal <em>names</em> cost mostly <em>budget</em> (the agent grinds, but usually arrives); undocumented <em>conventions</em> cost <em>correctness</em> — a confident, wrong number from data that looks perfect.</p>
 
-<h2>At scale — 25 tables, questions in business language</h2>
-<p>Everything above used a small, single-domain schema. To stress the same effects at realistic scale, we merged three unrelated databases — a beekeeping operation, a B2B&nbsp;SaaS audit log, and a healthcare-claims system — into <strong>one 25-table database</strong>, enriched it as a single unit, and asked <strong>16 questions phrased in plain business language</strong>, never the table's own vocabulary (<em>“how much are we reimbursed per billed event,”</em> not <code>AVG(paid_amt)</code>). At this scale the two failure modes compound: cross-domain name collisions <em>and</em> undocumented conventions, across far more schema than any single prompt holds.</p>
+<h2>Aspect 3 — Question language (at scale)</h2>
+<p>Everything above used a small, single-domain schema and questions worded close to the columns. The third axis is the question itself: when it is phrased in business language rather than the table's vocabulary, the agent must first <em>translate</em> it onto the schema — and at scale, that translation is where the naming and convention failures compound. We merged three unrelated databases — a beekeeping operation, a B2B&nbsp;SaaS audit log, and a healthcare-claims system — into <strong>one 25-table database</strong>, enriched it as a single unit, and asked <strong>16 questions phrased in plain business language</strong>, never the table's own vocabulary (<em>“how much are we reimbursed per billed event,”</em> not <code>AVG(paid_amt)</code>). At this scale the two failure modes compound: cross-domain name collisions <em>and</em> undocumented conventions, across far more schema than any single prompt holds.</p>
 
 <p>We ran five configurations over the identical 16 questions. <strong>Accuracy is adjudicated</strong> — an answer counts wrong only when it is genuinely incorrect, not when it is a defensible reading of an ambiguous business term. Turns, time, and cost are <strong>suite totals</strong> over all 16 questions.</p>
 <table>
