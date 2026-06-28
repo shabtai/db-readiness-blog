@@ -6,7 +6,7 @@
 <title>Three axes of database readiness for AI agents — names, values &amp; questions</title>
 <meta name="description" content="We measured how an AI agent's accuracy, time, and cost depend on three things we vary: whether a table's column names carry meaning, whether its values follow undocumented conventions, and whether the question is asked in the schema's vocabulary or plain business language. At 25-table scale, Haiku + a semantic brief matched frontier-model Opus on raw data for ~1/6 the cost and ~3× faster per question (median 26s vs 77s).">
 <style>
-  :root{--ink:#1a1d29;--muted:#5b6172;--line:#e7e9f0;--bg:#fafbfd;--accent:#3a5bd9;--good:#138a36;--bad:#c0392b;--soft:#f3f5fb;}
+  :root{--ink:#1a1d29;--muted:#5b6172;--line:#e7e9f0;--bg:#fafbfd;--accent:#3a5bd9;--good:#138a36;--amber:#e08e0b;--bad:#c0392b;--soft:#f3f5fb;}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
   .wrap{max-width:780px;margin:0 auto;padding:3.2rem 1.25rem 4rem}
@@ -41,6 +41,30 @@
   footer{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--line);color:var(--muted);font-size:.86rem}
   footer a{color:var(--accent);text-decoration:none}
   @media(max-width:560px){.grid{grid-template-columns:1fr}h1{font-size:1.7rem}}
+  figure{margin:1.4rem 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem .6rem .4rem}
+  svg{width:100%;height:auto;display:block}
+  svg text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .star{color:#e0a000}
+  .cmp{margin:1.2rem 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .cmp h3{margin:0;padding:.55rem .9rem;background:var(--soft);font-size:.9rem;border-bottom:1px solid var(--line)}
+  .cmp-card{padding:.7rem .9rem;border-bottom:1px solid var(--line)}
+  .cmp-card:last-child{border-bottom:none}
+  .cmp-head{font-size:.92rem;margin-bottom:.45rem}
+  .cmp-head .vs{color:var(--muted);font-weight:400}
+  .cmp-tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin:0;border:none;border-radius:0}
+  .cmp-tbl td{padding:.25rem .5rem;border-bottom:1px solid var(--line)}
+  .cmp-tbl tr:last-child td{border-bottom:none}
+  .cmp-tbl td:first-child{color:var(--muted);width:80px}
+  .cmp-tbl td.w{font-weight:700;font-variant-numeric:tabular-nums}
+  .cmp-tbl td.a{color:var(--muted);font-variant-numeric:tabular-nums}
+  .cmp-tbl td.g{color:var(--good);font-weight:600;text-align:right}
+  .cmp-tbl td.m{color:var(--muted);text-align:right}
+  .cmp-tbl tr.hd td{font-weight:600;color:var(--muted);font-size:.8rem}
+  .ex{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;margin:.6rem 0}
+  .ex-row{display:flex;gap:.7rem;padding:.5rem .8rem;border-bottom:1px solid var(--line);font-size:.88rem;line-height:1.5}
+  .ex-row:last-child{border-bottom:none}
+  .ex-k{flex:0 0 78px;color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.03em;padding-top:.15rem}
+  .ex-row code{word-break:break-word}
 </style>
 </head>
 <body>
@@ -162,24 +186,137 @@
 </table>
 <p class="cap">The brief lifts <em>every</em> model to the top of the accuracy band, including the cheapest. Raw <strong>Sonnet is the only config with real errors</strong> (13/16) — the mid-model's schema-linking mistakes, which both a bigger model <em>and</em> the brief independently erase. The frontier model on raw data (Opus, bottom row) reaches 15/16, but takes the slowest path — a <span class="tgap">median 77s per question</span> (mean&nbsp;84s; right-skewed, up to 237s on the hardest) — for a suite total of <span style="background:#fff5e6;color:#b3690a;font-weight:700;padding:0 4px;border-radius:3px">$5.54</span>. <em>Per-question means:</em> Haiku+brief&nbsp;32s, Sonnet+brief&nbsp;30s, Sonnet-raw&nbsp;30s, Opus+brief&nbsp;57s.</p>
 
+<figure>
+  <svg viewBox="0 0 760 500" role="img" aria-label="Time vs cost scatter; marker shape encodes model, fill encodes raw vs brief, colour encodes accuracy grade.">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b8"/>
+      </marker>
+    </defs>
+    <rect x="80" y="250" width="260" height="160" fill="#138a36" opacity="0.05"/>
+    <text x="92" y="402" font-size="12" fill="#9aa3b8">← faster · cheaper ↓ = better</text>
+    <g stroke="#eef0f6" stroke-width="1">
+      <line x1="80" y1="313" x2="680" y2="313"/>
+      <line x1="80" y1="215" x2="680" y2="215"/>
+      <line x1="80" y1="118" x2="680" y2="118"/>
+      <line x1="221" y1="50" x2="221" y2="410"/>
+      <line x1="362" y1="50" x2="362" y2="410"/>
+      <line x1="504" y1="50" x2="504" y2="410"/>
+      <line x1="645" y1="50" x2="645" y2="410"/>
+    </g>
+    <line x1="80" y1="410" x2="680" y2="410" stroke="#c8cddb" stroke-width="1.5"/>
+    <line x1="80" y1="50"  x2="80"  y2="410" stroke="#c8cddb" stroke-width="1.5"/>
+    <g font-size="12" fill="var(--muted)" text-anchor="end">
+      <text x="68" y="414">$0</text>
+      <text x="68" y="317">$0.10</text>
+      <text x="68" y="219">$0.20</text>
+      <text x="68" y="122">$0.30</text>
+    </g>
+    <g font-size="12" fill="var(--muted)" text-anchor="middle">
+      <text x="80"  y="430">0</text>
+      <text x="221" y="430">20s</text>
+      <text x="362" y="430">40s</text>
+      <text x="504" y="430">60s</text>
+      <text x="645" y="430">80s</text>
+    </g>
+    <text x="380" y="458" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle">Time per question  (median seconds)  →</text>
+    <text x="22" y="230" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle" transform="rotate(-90 22 230)">Cost per question  ($)  →</text>
+
+    <polygon points="623,62 614,81 632,81" fill="#fff" stroke="var(--amber)" stroke-width="3"/>
+    <g text-anchor="end">
+      <text x="607" y="70" font-size="13" font-weight="700" fill="var(--ink)">Opus · raw</text>
+      <text x="607" y="86" font-size="12" fill="var(--muted)">15/16 · 77s · $0.35</text>
+    </g>
+    <polygon points="398,114 389,133 407,133" fill="var(--good)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="start">
+      <text x="414" y="121" font-size="13" font-weight="700" fill="var(--ink)">Opus · brief</text>
+      <text x="414" y="137" font-size="12" fill="var(--muted)">16/16 · 45s · $0.29</text>
+    </g>
+    <rect x="284" y="312" width="16" height="16" rx="2" fill="#fff" stroke="var(--bad)" stroke-width="3"/>
+    <g text-anchor="start">
+      <text x="308" y="315" font-size="13" font-weight="700" fill="var(--ink)">Sonnet · raw</text>
+      <text x="308" y="331" font-size="12" fill="var(--bad)">13/16 · 30s · $0.09 — errors</text>
+    </g>
+    <rect x="220" y="287" width="16" height="16" rx="2" fill="var(--good)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="end">
+      <text x="208" y="284" font-size="13" font-weight="700" fill="var(--ink)">Sonnet · brief</text>
+      <text x="208" y="300" font-size="12" fill="var(--muted)">16/16 · 21s · $0.12</text>
+    </g>
+    <text x="243" y="291" font-size="15" fill="#e0a000" stroke="#fff" stroke-width="0.6" text-anchor="middle">★</text>
+    <circle cx="263" cy="357" r="9.5" fill="var(--amber)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="middle">
+      <text x="263" y="381" font-size="13" font-weight="700" fill="var(--ink)">Haiku · brief</text>
+      <text x="263" y="397" font-size="12" fill="var(--muted)">15/16 · 26s · $0.05</text>
+    </g>
+    <text x="279" y="356" font-size="15" fill="#e0a000" stroke="#fff" stroke-width="0.6" text-anchor="middle">★</text>
+
+    <g transform="translate(96,56)" font-size="10">
+      <rect x="-10" y="-14" width="196" height="134" rx="8" fill="#fff" stroke="var(--line)"/>
+      <text x="0" y="-1" font-weight="700" fill="var(--ink)">① Model — shape</text>
+      <circle cx="5" cy="12" r="5" fill="#5b6172"/><text x="14" y="15" fill="var(--muted)">Haiku</text>
+      <rect x="56" y="7" width="10" height="10" rx="1.5" fill="#5b6172"/><text x="71" y="15" fill="var(--muted)">Sonnet</text>
+      <polygon points="138,7 132,18 144,18" fill="#5b6172"/><text x="150" y="15" fill="var(--muted)">Opus</text>
+      <text x="0" y="35" font-weight="700" fill="var(--ink)">② Layer — fill</text>
+      <circle cx="5" cy="48" r="5" fill="#fff" stroke="#5b6172" stroke-width="2.2"/><text x="14" y="51" fill="var(--muted)">raw</text>
+      <circle cx="64" cy="48" r="5" fill="#5b6172"/><text x="73" y="51" fill="var(--muted)">brief (enriched)</text>
+      <text x="0" y="71" font-weight="700" fill="var(--ink)">③ Accuracy — colour</text>
+      <circle cx="5" cy="84" r="5" fill="var(--good)"/><text x="14" y="87" fill="var(--muted)">16/16 perfect</text>
+      <circle cx="5" cy="99" r="5" fill="var(--amber)"/><text x="14" y="102" fill="var(--muted)">15/16 near (1 miss)</text>
+      <circle cx="5" cy="114" r="5" fill="var(--bad)"/><text x="14" y="117" fill="var(--muted)">13/16 errors</text>
+    </g>
+  </svg>
+</figure>
+
+<div class="note"><strong>How to read the chart.</strong> Each point is one configuration: <strong>shape</strong> = model (● Haiku, ■ Sonnet, ▲ Opus), <strong>fill</strong> = raw (hollow) vs brief (filled), <strong>colour</strong> = accuracy grade (green 16/16, amber 15/16, red 13/16). Down-and-left is cheaper and faster; <span class="star">★</span> marks each metric's winner. No brief (filled) marker is red — enrichment never leaves real errors; the lone red point is raw Sonnet (13/16).</div>
+
+<div class="cmp">
+  <h3><span class="star">★</span> Winners vs. their non-enriched alternative <span style="font-weight:400;color:var(--muted)">(per question)</span></h3>
+  <div class="cmp-card">
+    <div class="cmp-head"><span class="star">★</span> Cheapest — <strong>Haiku · brief</strong> <span class="vs">vs non-enriched <strong>Opus · raw</strong></span></div>
+    <table class="cmp-tbl">
+      <tr class="hd"><td></td><td>Haiku · brief</td><td>Opus · raw</td><td></td></tr>
+      <tr><td>Cost</td><td class="w">$0.05</td><td class="a">$0.35</td><td class="g">≈ 6× cheaper</td></tr>
+      <tr><td>Time</td><td class="w">26s</td><td class="a">77s</td><td class="g">≈ 3× faster</td></tr>
+      <tr><td>Accuracy</td><td class="w">15/16</td><td class="a">15/16</td><td class="m">same grade</td></tr>
+    </table>
+  </div>
+  <div class="cmp-card">
+    <div class="cmp-head"><span class="star">★</span> Fastest &amp; most accurate — <strong>Sonnet · brief</strong> <span class="vs">vs non-enriched <strong>Sonnet · raw</strong></span></div>
+    <table class="cmp-tbl">
+      <tr class="hd"><td></td><td>Sonnet · brief</td><td>Sonnet · raw</td><td></td></tr>
+      <tr><td>Cost</td><td class="w">$0.12</td><td class="a">$0.09</td><td class="m">+$0.03</td></tr>
+      <tr><td>Time</td><td class="w">21s</td><td class="a">30s</td><td class="g">≈ 30% faster</td></tr>
+      <tr><td>Accuracy</td><td class="w">16/16</td><td class="a">13/16</td><td class="g">+3 correct</td></tr>
+    </table>
+  </div>
+</div>
+<p class="cap">Haiku+brief and Opus-raw <strong>tie at 15/16</strong> but miss <em>different</em> questions — Haiku+brief gets right the one Opus-raw misses (below). Beyond the medians: per-question <em>mean</em> time 32s vs 84s, <em>turns</em> over the 16-question suite 75 vs 123, and cost as suite totals $0.87 vs $5.54.</p>
+
 <div class="callout">
-  <div>The cheapest model with a semantic layer beat the frontier model on raw data — on every axis that matters:</div>
-  <table style="margin:.7rem 0 .2rem">
-    <thead><tr><th></th><th class="num">Haiku&nbsp;+&nbsp;brief</th><th class="num">Opus&nbsp;— raw</th><th class="num">ratio</th></tr></thead>
-    <tbody>
-      <tr><td>Accuracy</td><td class="num good">15/16</td><td class="num">15/16</td><td class="num">tie*</td></tr>
-      <tr><td>Time/q — median</td><td class="num good">26s</td><td class="num">77s</td><td class="num good">34%</td></tr>
-      <tr><td>Time/q — mean</td><td class="num good">32s</td><td class="num">84s</td><td class="num good">38%</td></tr>
-      <tr><td>Cost (16&nbsp;q total)</td><td class="num good">$0.87</td><td class="num">$5.54</td><td class="num good">16%</td></tr>
-      <tr><td>Turns (16&nbsp;q total)</td><td class="num good">75</td><td class="num">123</td><td class="num good">61%</td></tr>
-    </tbody>
-  </table>
-  <div class="big" style="color:var(--accent);margin-top:.4rem">≈ 1/6 the cost, ~3× faster per question — same accuracy</div>
-  <p class="cap" style="margin-top:.3rem">*A tie on the count, but they miss <em>different</em> questions — and Haiku+brief got right the one question Opus-raw got wrong (below). Enrichment doesn't just substitute for model capability; here it buys a fact the frontier model could not recover on its own.</p>
+  <div class="big" style="color:var(--accent)">≈ 1/6 the cost, ~3× faster per question — same accuracy</div>
+  <p class="cap" style="margin-top:.3rem">A legible, documented schema lets the cheapest model do what otherwise needed a frontier one — enrichment substitutes for model capability.</p>
 </div>
 
 <h3>The question both frontier models got wrong</h3>
 <p>One question asked for the average reimbursement of patients carrying a <em>chronic, risk-adjusting condition.</em> A condition only <em>risk-adjusts</em> if it maps to a real risk code — and <strong>6 of the 16 codes in the reference table map to nothing.</strong> Both raw frontier models (Sonnet and Opus) counted every code in the table and answered <span class="bad">≈ $610 / $654</span> — wrong. The enrichment had documented the empty-code convention, so <em>every</em> brief configuration — <strong>including Haiku</strong> — filtered to the codes that actually risk-adjust and answered <span class="good">$151</span>, correctly. The decisive fact was in neither the question nor the schema; it was a convention buried in the data, and only the semantic layer carried it. An exact-match grader against a hand-written gold would have <em>penalised</em> the brief here — the layer was more correct than the reference.</p>
+
+<h3>What one question looks like</h3>
+<p>The 25-table merged database includes a healthcare-claims table. Questions arrive in plain business language; the agent must map each onto opaque columns and write the query.</p>
+<div class="ex">
+  <div class="ex-row"><span class="ex-k">Table</span><span><code>claims</code> — <strong>10 columns</strong>, 13 rows</span></div>
+  <div class="ex-row"><span class="ex-k">Columns</span><span><code>claim_id, patient_id, dos, claim_type, icd10_primary, icd10_secondary, cpt, rendering_npi, paid_amt, service_year</code></span></div>
+  <div class="ex-row"><span class="ex-k">Question</span><span>“On average, how much are we reimbursed for each billed service event, to two decimals?”</span></div>
+  <div class="ex-row"><span class="ex-k">Query</span><span><code>SELECT ROUND(AVG(paid_amt), 2) FROM claims;</code> &nbsp;→&nbsp; <strong>610.27</strong></span></div>
+</div>
+<p class="cap">Nothing in the question says <code>paid_amt</code> or <code>claims</code> — "reimbursed" → <code>paid_amt</code>, "billed service event" → a <code>claims</code> row. That translation is the work, and it is what low-signal names make expensive.</p>
+<p>The risk-code crosswalk behind the question above is the harder case — the decisive fact lives in the data, not the schema:</p>
+<div class="ex">
+  <div class="ex-row"><span class="ex-k">Table</span><span><code>hcc_reference</code> — <strong>6 columns</strong>, 16 rows</span></div>
+  <div class="ex-row"><span class="ex-k">Columns</span><span><code>icd10, description, hcc_code, hcc_description, raf_weight, model</code></span></div>
+  <div class="ex-row"><span class="ex-k">Question</span><span>“How many distinct risk-adjustment condition categories does our coding crosswalk cover?”</span></div>
+  <div class="ex-row"><span class="ex-k">Naïve</span><span><code>SELECT COUNT(DISTINCT hcc_code) FROM hcc_reference;</code> — counts all 16 rows, but <strong>6 have a blank <code>hcc_code</code></strong> (they map to nothing).</span></div>
+  <div class="ex-row"><span class="ex-k">Correct</span><span><code>… WHERE hcc_code &lt;&gt; '';</code> &nbsp;→&nbsp; <strong>7</strong></span></div>
+</div>
 
 <h2>Bottom line</h2>
 <p class="lede">Enrich a low-signal schema and the <strong>cheapest model matches a frontier model's accuracy at ~80% lower price and ~50% less time per question</strong> ($0.050 vs $0.269) — database readiness is a property of your <em>data</em>, not the model you pick.</p>

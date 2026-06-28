@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time vs. cost — by model, layer, and accuracy</title>
+<style>
+  :root{--ink:#1a1d29;--muted:#5b6172;--line:#e7e9f0;--bg:#fafbfd;--accent:#3a5bd9;
+        --good:#138a36;--amber:#e08e0b;--bad:#c0392b;--soft:#f3f5fb;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:880px;margin:0 auto;padding:2.4rem 1.1rem 3rem}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.72rem}
+  h1{font-size:1.5rem;line-height:1.2;margin:.4rem 0 .3rem;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:1rem;margin:0 0 1.2rem}
+  figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem .6rem .4rem}
+  svg{width:100%;height:auto;display:block}
+  figcaption{color:var(--muted);font-size:.84rem;margin:.6rem .6rem 0;line-height:1.5}
+  .read{background:var(--soft);border-radius:8px;padding:.8rem 1rem;color:var(--muted);font-size:.86rem;margin:1.4rem 0 0}
+  .read b{color:var(--ink)}
+  .cmp{margin:1.2rem 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .cmp h3{margin:0;padding:.55rem .9rem;background:var(--soft);font-size:.9rem;border-bottom:1px solid var(--line)}
+  .cmp-card{padding:.7rem .9rem;border-bottom:1px solid var(--line)}
+  .cmp-card:last-child{border-bottom:none}
+  .cmp-head{font-size:.92rem;margin-bottom:.45rem}
+  .cmp-head .vs{color:var(--muted);font-weight:400}
+  .cmp-tbl{width:100%;border-collapse:collapse;font-size:.85rem}
+  .cmp-tbl td{padding:.25rem .5rem;border-bottom:1px solid var(--line)}
+  .cmp-tbl tr:last-child td{border-bottom:none}
+  .cmp-tbl td:first-child{color:var(--muted);width:80px}
+  .cmp-tbl td.w{font-weight:700;font-variant-numeric:tabular-nums}
+  .cmp-tbl td.a{color:var(--muted);font-variant-numeric:tabular-nums}
+  .cmp-tbl td.g{color:var(--good);font-weight:600;text-align:right}
+  .cmp-tbl td.m{color:var(--muted);text-align:right}
+  .cmp-tbl tr.hd td{font-weight:600;color:var(--muted);font-size:.8rem}
+  .star{color:#e0a000}
+  .ex-h{font-size:1.05rem;margin:1.8rem 0 .2rem}
+  .ex-p{font-size:.9rem;color:var(--muted);margin:.4rem 0}
+  .ex-p code,.ex code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:.86em;font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  .ex{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;margin:.6rem 0}
+  .ex-row{display:flex;gap:.7rem;padding:.5rem .8rem;border-bottom:1px solid var(--line);font-size:.88rem;line-height:1.5}
+  .ex-row:last-child{border-bottom:none}
+  .ex-k{flex:0 0 78px;color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.03em;padding-top:.15rem}
+  .ex-row code{word-break:break-word}
+  text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Database readiness · time vs. cost</div>
+  <h1>Time vs. cost per question — read by model, layer, and accuracy</h1>
+  <p class="sub">25-table cross-domain database, 16 business-language questions. Three things are encoded at once: <strong>shape</strong> = which model, <strong>fill</strong> = raw or brief, <strong>colour</strong> = accuracy grade (green perfect · amber near · red errors). Down-and-left is better. <strong>★</strong> flags the winner on each metric, paired with its non-enriched alternative.</p>
+
+  <figure>
+  <svg viewBox="0 0 760 500" role="img" aria-label="Time vs cost scatter; marker shape encodes model, fill encodes raw vs brief, colour encodes accurate vs not accurate.">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b8"/>
+      </marker>
+    </defs>
+
+    <!-- better-corner wash (bottom-left) -->
+    <rect x="80" y="250" width="260" height="160" fill="#138a36" opacity="0.05"/>
+    <text x="92" y="402" font-size="12" fill="#9aa3b8">← faster · cheaper ↓ = better</text>
+
+    <!-- gridlines -->
+    <g stroke="#eef0f6" stroke-width="1">
+      <line x1="80" y1="313" x2="680" y2="313"/>
+      <line x1="80" y1="215" x2="680" y2="215"/>
+      <line x1="80" y1="118" x2="680" y2="118"/>
+      <line x1="221" y1="50" x2="221" y2="410"/>
+      <line x1="362" y1="50" x2="362" y2="410"/>
+      <line x1="504" y1="50" x2="504" y2="410"/>
+      <line x1="645" y1="50" x2="645" y2="410"/>
+    </g>
+
+    <!-- axes -->
+    <line x1="80" y1="410" x2="680" y2="410" stroke="#c8cddb" stroke-width="1.5"/>
+    <line x1="80" y1="50"  x2="80"  y2="410" stroke="#c8cddb" stroke-width="1.5"/>
+
+    <!-- y ticks -->
+    <g font-size="12" fill="var(--muted)" text-anchor="end">
+      <text x="68" y="414">$0</text>
+      <text x="68" y="317">$0.10</text>
+      <text x="68" y="219">$0.20</text>
+      <text x="68" y="122">$0.30</text>
+    </g>
+    <!-- x ticks -->
+    <g font-size="12" fill="var(--muted)" text-anchor="middle">
+      <text x="80"  y="430">0</text>
+      <text x="221" y="430">20s</text>
+      <text x="362" y="430">40s</text>
+      <text x="504" y="430">60s</text>
+      <text x="645" y="430">80s</text>
+    </g>
+
+    <!-- axis titles -->
+    <text x="380" y="458" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle">Time per question  (median seconds)  →</text>
+    <text x="22" y="230" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle" transform="rotate(-90 22 230)">Cost per question  ($)  →</text>
+
+    <!-- comparisons moved below the chart -->
+
+
+    <!-- ===== points: shape=model · fill=raw/brief · colour=accuracy ===== -->
+    <!-- Opus · raw  (77s,$0.35,15/16 accurate) → triangle, hollow, green -->
+    <polygon points="623,62 614,81 632,81" fill="#fff" stroke="var(--amber)" stroke-width="3"/>
+    <g text-anchor="end">
+      <text x="607" y="70" font-size="13" font-weight="700" fill="var(--ink)">Opus · raw</text>
+      <text x="607" y="86" font-size="12" fill="var(--muted)">15/16 · 77s · $0.35</text>
+    </g>
+
+    <!-- Opus · brief  (45s,$0.29,16/16 accurate) → triangle, filled, green -->
+    <polygon points="398,114 389,133 407,133" fill="var(--good)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="start">
+      <text x="414" y="121" font-size="13" font-weight="700" fill="var(--ink)">Opus · brief</text>
+      <text x="414" y="137" font-size="12" fill="var(--muted)">16/16 · 45s · $0.29</text>
+    </g>
+
+    <!-- Sonnet · raw  (30s,$0.09,13/16 NOT accurate) → square, hollow, red -->
+    <rect x="284" y="312" width="16" height="16" rx="2" fill="#fff" stroke="var(--bad)" stroke-width="3"/>
+    <g text-anchor="start">
+      <text x="308" y="315" font-size="13" font-weight="700" fill="var(--ink)">Sonnet · raw</text>
+      <text x="308" y="331" font-size="12" fill="var(--bad)">13/16 · 30s · $0.09 — errors</text>
+    </g>
+
+    <!-- Sonnet · brief  (21s,$0.12,16/16) → square, filled, green · WINNER: fastest + best accuracy -->
+    <rect x="220" y="287" width="16" height="16" rx="2" fill="var(--good)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="end">
+      <text x="208" y="284" font-size="13" font-weight="700" fill="var(--ink)">Sonnet · brief</text>
+      <text x="208" y="300" font-size="12" fill="var(--muted)">16/16 · 21s · $0.12</text>
+    </g>
+    <text x="243" y="291" font-size="15" fill="#e0a000" stroke="#fff" stroke-width="0.6" text-anchor="middle">★</text>
+
+    <!-- Haiku · brief  (26s,$0.05,15/16) → circle, filled, amber · WINNER: cheapest -->
+    <circle cx="263" cy="357" r="9.5" fill="var(--amber)" stroke="#fff" stroke-width="1.4"/>
+    <g text-anchor="middle">
+      <text x="263" y="381" font-size="13" font-weight="700" fill="var(--ink)">Haiku · brief</text>
+      <text x="263" y="397" font-size="12" fill="var(--muted)">15/16 · 26s · $0.05</text>
+    </g>
+    <text x="279" y="356" font-size="15" fill="#e0a000" stroke="#fff" stroke-width="0.6" text-anchor="middle">★</text>
+
+    <!-- ===== the three graphical notes ===== -->
+    <g transform="translate(96,56)" font-size="10">
+      <rect x="-10" y="-14" width="196" height="134" rx="8" fill="#fff" stroke="var(--line)"/>
+
+      <!-- note 1 : model = shape -->
+      <text x="0" y="-1" font-weight="700" fill="var(--ink)">① Model — shape</text>
+      <circle cx="5" cy="12" r="5" fill="#5b6172"/><text x="14" y="15" fill="var(--muted)">Haiku</text>
+      <rect x="56" y="7" width="10" height="10" rx="1.5" fill="#5b6172"/><text x="71" y="15" fill="var(--muted)">Sonnet</text>
+      <polygon points="138,7 132,18 144,18" fill="#5b6172"/><text x="150" y="15" fill="var(--muted)">Opus</text>
+
+      <!-- note 2 : layer = fill -->
+      <text x="0" y="35" font-weight="700" fill="var(--ink)">② Layer — fill</text>
+      <circle cx="5" cy="48" r="5" fill="#fff" stroke="#5b6172" stroke-width="2.2"/><text x="14" y="51" fill="var(--muted)">raw</text>
+      <circle cx="64" cy="48" r="5" fill="#5b6172"/><text x="73" y="51" fill="var(--muted)">brief (enriched)</text>
+
+      <!-- note 3 : accuracy grade = colour -->
+      <text x="0" y="71" font-weight="700" fill="var(--ink)">③ Accuracy — colour</text>
+      <circle cx="5" cy="84" r="5" fill="var(--good)"/><text x="14" y="87" fill="var(--muted)">16/16 perfect</text>
+      <circle cx="5" cy="99" r="5" fill="var(--amber)"/><text x="14" y="102" fill="var(--muted)">15/16 near (1 miss)</text>
+      <circle cx="5" cy="114" r="5" fill="var(--bad)"/><text x="14" y="117" fill="var(--muted)">13/16 errors</text>
+    </g>
+  </svg>
+  </figure>
+
+  <div class="cmp">
+    <h3><span class="star">★</span> Winners vs. their non-enriched alternative</h3>
+
+    <div class="cmp-card">
+      <div class="cmp-head"><span class="star">★</span> Cheapest — <strong>Haiku · brief</strong> <span class="vs">vs non-enriched <strong>Opus · raw</strong></span></div>
+      <table class="cmp-tbl">
+        <tr class="hd"><td></td><td>Haiku · brief</td><td>Opus · raw</td><td></td></tr>
+        <tr><td>Cost</td><td class="w">$0.05</td><td class="a">$0.35</td><td class="g">≈ 6× cheaper</td></tr>
+        <tr><td>Time</td><td class="w">26s</td><td class="a">77s</td><td class="g">≈ 3× faster</td></tr>
+        <tr><td>Accuracy</td><td class="w">15/16</td><td class="a">15/16</td><td class="m">same grade</td></tr>
+      </table>
+    </div>
+
+    <div class="cmp-card">
+      <div class="cmp-head"><span class="star">★</span> Fastest &amp; most accurate — <strong>Sonnet · brief</strong> <span class="vs">vs non-enriched <strong>Sonnet · raw</strong></span></div>
+      <table class="cmp-tbl">
+        <tr class="hd"><td></td><td>Sonnet · brief</td><td>Sonnet · raw</td><td></td></tr>
+        <tr><td>Cost</td><td class="w">$0.12</td><td class="a">$0.09</td><td class="m">+$0.03</td></tr>
+        <tr><td>Time</td><td class="w">21s</td><td class="a">30s</td><td class="g">≈ 30% faster</td></tr>
+        <tr><td>Accuracy</td><td class="w">16/16</td><td class="a">13/16</td><td class="g">+3 correct</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="read"><b>Three encodings, one frame:</b> shape, fill and colour let the time/cost scatter answer three questions at a glance — <b>which model</b>, <b>raw or enriched</b>, and <b>what accuracy grade it earned</b> — without a second chart. The pattern that pops out: no brief (filled) marker is red — enrichment never leaves real errors — while the cheapest model on raw data is the lone red point (Sonnet, 13/16), the one the brief lifts back to a perfect green.</div>
+
+  <h2 class="ex-h">What one question looks like</h2>
+  <p class="ex-p">The benchmark is one <strong>25-table</strong> database (a beekeeping operation + a B2B-SaaS audit log + a healthcare-claims system, merged). Questions are asked in plain business language; the agent has to map each onto opaque columns and write the query.</p>
+  <div class="ex">
+    <div class="ex-row"><span class="ex-k">Table</span><span><code>claims</code> — <strong>10 columns</strong>, 13 rows</span></div>
+    <div class="ex-row"><span class="ex-k">Columns</span><span><code>claim_id, patient_id, dos, claim_type, icd10_primary, icd10_secondary, cpt, rendering_npi, paid_amt, service_year</code></span></div>
+    <div class="ex-row"><span class="ex-k">Question</span><span>“On average, how much are we reimbursed for each billed service event, to two decimals?”</span></div>
+    <div class="ex-row"><span class="ex-k">Query</span><span><code>SELECT ROUND(AVG(paid_amt), 2) FROM claims;</code> &nbsp;→&nbsp; <strong>610.27</strong></span></div>
+  </div>
+  <p class="ex-p">Nothing in the question says <code>paid_amt</code> or <code>claims</code> — "reimbursed" → <code>paid_amt</code>, "billed service event" → a <code>claims</code> row. That translation is the work, and it's exactly what low-signal names make expensive.</p>
+
+  <p class="ex-p">A harder one, where the decisive fact is <em>in the data, not the question</em>:</p>
+  <div class="ex">
+    <div class="ex-row"><span class="ex-k">Table</span><span><code>hcc_reference</code> — <strong>6 columns</strong>, 16 rows (a risk-code crosswalk)</span></div>
+    <div class="ex-row"><span class="ex-k">Columns</span><span><code>icd10, description, hcc_code, hcc_description, raf_weight, model</code></span></div>
+    <div class="ex-row"><span class="ex-k">Question</span><span>“How many distinct risk-adjustment condition categories does our coding crosswalk cover?”</span></div>
+    <div class="ex-row"><span class="ex-k">Naïve</span><span><code>SELECT COUNT(DISTINCT hcc_code) FROM hcc_reference;</code> — counts all 16 rows, but <strong>6 have a blank <code>hcc_code</code></strong> (they map to nothing).</span></div>
+    <div class="ex-row"><span class="ex-k">Correct</span><span><code>… WHERE hcc_code &lt;&gt; '';</code> &nbsp;→&nbsp; <strong>7</strong></span></div>
+  </div>
+  <p class="ex-p">The "6 codes map to nothing" rule is written nowhere in the schema — only the enrichment captured it. The brief carries it, so every model answers <strong>7</strong>; raw, both frontier models over-count.</p>
+</div>
+<script data-goatcounter="https://natural-joints.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
