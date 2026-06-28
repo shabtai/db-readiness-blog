@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Two axes of database readiness for AI agents — names &amp; values</title>
-<meta name="description" content="We measured how an AI agent's accuracy, cost, time, and query count depend on two independent properties of a table: whether its column names carry meaning, and whether its values follow undocumented conventions. At 25-table scale, Haiku + a semantic brief matched frontier-model Opus on raw data for ~1/6 the cost and ~3× faster per question (median 26s vs 77s).">
+<title>Three axes of database readiness for AI agents — names, values &amp; questions</title>
+<meta name="description" content="We measured how an AI agent's accuracy, time, and cost depend on three things we vary: whether a table's column names carry meaning, whether its values follow undocumented conventions, and whether the question is asked in the schema's vocabulary or plain business language. At 25-table scale, Haiku + a semantic brief matched frontier-model Opus on raw data for ~1/6 the cost and ~3× faster per question (median 26s vs 77s).">
 <style>
   :root{--ink:#1a1d29;--muted:#5b6172;--line:#e7e9f0;--bg:#fafbfd;--accent:#3a5bd9;--good:#138a36;--bad:#c0392b;--soft:#f3f5fb;}
   *{box-sizing:border-box}
@@ -48,7 +48,7 @@
 <header>
   <div class="kicker">Database readiness · measurement</div>
   <h1>What a low-signal table costs an AI agent</h1>
-  <p class="sub">Two independent properties of a table change an agent's cost, latency, and correctness — and each has a different fix.</p>
+  <p class="sub">Three things — two about your data, one about your question — change an agent's accuracy, time, and cost. Each has a different fix.</p>
   <div class="byline">A benchmark study from <strong>Natural&#8209;Joints</strong> · we drove a Claude&nbsp;Code agent through a fixed question set and logged every query it issued.</div>
 </header>
 
@@ -60,12 +60,13 @@
 </ol>
 <p>The first two are properties of your <em>data</em>; the third is a property of the <em>question</em>. Aspects&nbsp;1 and&nbsp;2 are isolated below on a small schema; Aspect&nbsp;3 — the gap between business language and table vocabulary — is where they compound, so we test it at scale (25&nbsp;tables) in the last section.</p>
 
-<h2>The four metrics</h2>
+<h2>The three outcomes we measure</h2>
+<p>Every change above lands on the same three outcomes: whether the answer is <strong>accurate</strong>, how much <strong>time</strong> it takes, and what it <strong>costs</strong>. Queries/q sits underneath them as a diagnostic — the agent's exploration effort, which is what drives time and cost.</p>
 <div class="grid">
-  <div class="metric"><b>Accuracy</b><span>Answer matches a known gold result. The only correctness metric; the other three measure effort.</span></div>
-  <div class="metric"><b>Queries / q</b><span>SQL statements the agent issues per question — its exploration effort. A legible schema needs fewer.</span></div>
-  <div class="metric"><b>Time / q</b><span>Wall-clock seconds per question; the round-trips before it can answer.</span></div>
+  <div class="metric"><b>Accuracy</b><span>Answer matches a known gold result. The one correctness metric; time and cost measure effort.</span></div>
+  <div class="metric"><b>Time / q</b><span>Wall-clock seconds per question — the round-trips before it can answer.</span></div>
   <div class="metric"><b>Price / q</b><span>Model API dollars per question — driven by tokens: the schema it reads + the queries it runs.</span></div>
+  <div class="metric"><b>Queries / q <span style="color:var(--muted);font-weight:400">· diagnostic</span></b><span>SQL statements the agent issues per question — its exploration effort. A legible schema needs fewer; this is what drives time and cost above.</span></div>
 </div>
 
 <h2>Aspect 1 — Column names (legibility)</h2>
